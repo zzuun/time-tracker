@@ -1,15 +1,13 @@
 # time-tracker
 A simple time-tracking application in golang.
 
-###start postgres container
+### start postgres container
 
-`docker pull postgres:latest`
-<br/>
-<br/>
-`docker run --name postgres -e POSTGRES_PASSWORD=[your_password] -d postgres` 
-<br/>
-<br/>
-`docker exec -it postgres psql -U postgres`
+```docker pull postgres:latest```
+
+```docker run --name postgres -e POSTGRES_PASSWORD=[your_password] -d postgres```
+
+```docker exec -it postgres psql -U postgres```
 
 ### create table for users and time enteries
 ```
