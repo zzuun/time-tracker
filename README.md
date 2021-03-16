@@ -29,3 +29,11 @@ END_TIME TIMESTAMP,
 CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(id)
 );
 ```
+
+### start the application 
+
+```go run main.go```
+
+access the swagger in terminal 
+
+http://127.0.0.1:8000/swagger/index.html

@@ -12,8 +12,14 @@ import (
 
 type Controller struct{ DB *model.Database }
 
+// @Tags account
+// @Summary signup
+// @Param body	body model.UserInput	true	"username, password"
+// @Accept  json
+// @Produce  json
+// @router /signup [post]
+// @Success 201 "user created successfully"
 func (c *Controller) Signup(ctx *gin.Context) {
-
 	user := new(model.User)
 	err := ctx.ShouldBind(&user)
 	if err != nil {
@@ -53,6 +59,13 @@ func (c *Controller) Signup(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, "user created successfully")
 }
 
+// @Tags account
+// @Summary login
+// @Param body	body model.UserInput	true	"username, password"
+// @Accept  json
+// @Produce  json
+// @router /login [post]
+// @Success 200 "X-AUTH-TOKEN"
 func (c *Controller) Login(ctx *gin.Context) {
 	user := new(model.User)
 	err := ctx.ShouldBind(&user)
@@ -82,6 +95,13 @@ func (c *Controller) Login(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, token)
 }
 
+// @Tags timer
+// @Summary Start timer
+// @param X-AUTH-TOKEN	header	string	true	"JWT Token"
+// @Accept  json
+// @Produce  json
+// @router /start [post]
+// @Success 200 {object} model.Entry
 func (c *Controller) StartTime(ctx *gin.Context) {
 
 	token := ctx.GetHeader("X-AUTH-TOKEN")
@@ -105,6 +125,14 @@ func (c *Controller) StartTime(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, entry)
 }
 
+// @Tags timer
+// @Summary Stop timer
+// @Param id path	string 	true 	"id of the entry"
+// @param X-AUTH-TOKEN	header	string	true	"JWT Token"
+// @Accept  json
+// @Produce  json
+// @router /stop/{id} [put]
+// @Success 200 "record updated"
 func (c *Controller) StopTime(ctx *gin.Context) {
 
 	token := ctx.GetHeader("X-AUTH-TOKEN")
@@ -130,6 +158,15 @@ func (c *Controller) StopTime(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, "record updated")
 }
 
+// @Tags timer
+// @Summary List of all entries
+// @param X-AUTH-TOKEN	header	string	true	"JWT Token"
+// @param from	query	string	false	"starting date : format 2021-01-01"
+// @param to	query	string	false	"ending date : format 2021-01-31"
+// @Accept  json
+// @Produce  json
+// @router /activity [get]
+// @Success 200 "{"today":"","24hours":"","weekly":"","monthly":""}"
 func (c *Controller) Activity(ctx *gin.Context) {
 
 	token := ctx.GetHeader("X-AUTH-TOKEN")

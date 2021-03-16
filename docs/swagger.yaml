@@ -1,0 +1,131 @@
+definitions:
+  model.Entry:
+    properties:
+      id:
+        type: integer
+      start_time:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  model.UserInput:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: A simple time-tracking application in golang.
+  title: time-tracker
+  version: "1.0"
+paths:
+  /activity:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: JWT Token
+        in: header
+        name: X-AUTH-TOKEN
+        required: true
+        type: string
+      - description: 'starting date : format 2021-01-01'
+        in: query
+        name: from
+        type: string
+      - description: 'ending date : format 2021-01-31'
+        in: query
+        name: to
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: '{"today":"","24hours":"","weekly":"","monthly":""}'
+      summary: List of all entries
+      tags:
+      - timer
+  /login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: username, password
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.UserInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: X-AUTH-TOKEN
+      summary: login
+      tags:
+      - account
+  /signup:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: username, password
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.UserInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: user created successfully
+      summary: signup
+      tags:
+      - account
+  /start:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: JWT Token
+        in: header
+        name: X-AUTH-TOKEN
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Entry'
+      summary: Start timer
+      tags:
+      - timer
+  /stop/{id}:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: id of the entry
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: JWT Token
+        in: header
+        name: X-AUTH-TOKEN
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: record updated
+      summary: Stop timer
+      tags:
+      - timer
+swagger: "2.0"

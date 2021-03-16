@@ -1,0 +1,204 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "A simple time-tracking application in golang.",
+        "title": "time-tracker",
+        "contact": {},
+        "version": "1.0"
+    },
+    "paths": {
+        "/activity": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "timer"
+                ],
+                "summary": "List of all entries",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token",
+                        "name": "X-AUTH-TOKEN",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "starting date : format 2021-01-01",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "ending date : format 2021-01-31",
+                        "name": "to",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{\"today\":\"\",\"24hours\":\"\",\"weekly\":\"\",\"monthly\":\"\"}"
+                    }
+                }
+            }
+        },
+        "/login": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "account"
+                ],
+                "summary": "login",
+                "parameters": [
+                    {
+                        "description": "username, password",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.UserInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "X-AUTH-TOKEN"
+                    }
+                }
+            }
+        },
+        "/signup": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "account"
+                ],
+                "summary": "signup",
+                "parameters": [
+                    {
+                        "description": "username, password",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.UserInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "user created successfully"
+                    }
+                }
+            }
+        },
+        "/start": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "timer"
+                ],
+                "summary": "Start timer",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token",
+                        "name": "X-AUTH-TOKEN",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Entry"
+                        }
+                    }
+                }
+            }
+        },
+        "/stop/{id}": {
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "timer"
+                ],
+                "summary": "Stop timer",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id of the entry",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "JWT Token",
+                        "name": "X-AUTH-TOKEN",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "record updated"
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "model.Entry": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.UserInput": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

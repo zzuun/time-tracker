@@ -2,10 +2,17 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"github.com/zzuun/time-tracker/controller"
+	_ "github.com/zzuun/time-tracker/docs"
 	"github.com/zzuun/time-tracker/model"
 	"log"
 )
+
+// @title time-tracker
+// @version 1.0
+// @description A simple time-tracking application in golang.
 
 func main() {
 
@@ -28,9 +35,10 @@ func main() {
 	router.POST("/signup", ctrl.Signup)
 	router.POST("/login", ctrl.Login)
 	router.POST("/start", ctrl.StartTime)
-	router.PUT("/stop/	:id", ctrl.StopTime)
+	router.PUT("/stop/:id", ctrl.StopTime)
 	router.GET("/activity", ctrl.Activity)
 
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	log.Fatal(router.Run(":8000"))
 
 }

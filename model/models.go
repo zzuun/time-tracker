@@ -7,6 +7,10 @@ type User struct {
 	Email    string `json:"email" binding:"Required"`
 	Password string `json:"password,omitempty" binding:"Required"`
 }
+type UserInput struct {
+	Email    string `json:"email" binding:"Required"`
+	Password string `json:"password,omitempty" binding:"Required"`
+}
 
 type Entry struct {
 	ID        int       `json:"id"`
