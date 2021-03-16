@@ -23,46 +23,6 @@ var doc = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/activity": {
-            "get": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "timer"
-                ],
-                "summary": "List of all entries",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "JWT Token",
-                        "name": "X-AUTH-TOKEN",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "starting date : format 2021-01-01",
-                        "name": "from",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "ending date : format 2021-01-31",
-                        "name": "to",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "{\"today\":\"\",\"24hours\":\"\",\"weekly\":\"\",\"monthly\":\"\"}"
-                    }
-                }
-            }
-        },
         "/login": {
             "post": {
                 "consumes": [
@@ -82,13 +42,13 @@ var doc = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UserInput"
+                            "$ref": "#/definitions/models.UserInput"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "X-AUTH-TOKEN"
+                        "description": "X-Auth-Token"
                     }
                 }
             }
@@ -112,7 +72,7 @@ var doc = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UserInput"
+                            "$ref": "#/definitions/models.UserInput"
                         }
                     }
                 ],
@@ -123,7 +83,54 @@ var doc = `{
                 }
             }
         },
-        "/start": {
+        "/tracker/activity": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "timer"
+                ],
+                "summary": "List of all entries",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token",
+                        "name": "X-Auth-Token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "duration: custom,week,day,month,day,today ",
+                        "name": "duration",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "starting date : format 2021-01-01",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "ending date : format 2021-01-31",
+                        "name": "to",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{\"total_time\":\"\"}"
+                    }
+                }
+            }
+        },
+        "/tracker/start": {
             "post": {
                 "consumes": [
                     "application/json"
@@ -139,7 +146,7 @@ var doc = `{
                     {
                         "type": "string",
                         "description": "JWT Token",
-                        "name": "X-AUTH-TOKEN",
+                        "name": "X-Auth-Token",
                         "in": "header",
                         "required": true
                     }
@@ -148,13 +155,13 @@ var doc = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.Entry"
+                            "$ref": "#/definitions/models.Entry"
                         }
                     }
                 }
             }
         },
-        "/stop/{id}": {
+        "/tracker/stop/{id}": {
             "put": {
                 "consumes": [
                     "application/json"
@@ -177,7 +184,7 @@ var doc = `{
                     {
                         "type": "string",
                         "description": "JWT Token",
-                        "name": "X-AUTH-TOKEN",
+                        "name": "X-Auth-Token",
                         "in": "header",
                         "required": true
                     }
@@ -191,7 +198,7 @@ var doc = `{
         }
     },
     "definitions": {
-        "model.Entry": {
+        "models.Entry": {
             "type": "object",
             "properties": {
                 "id": {
@@ -205,7 +212,7 @@ var doc = `{
                 }
             }
         },
-        "model.UserInput": {
+        "models.UserInput": {
             "type": "object",
             "properties": {
                 "email": {

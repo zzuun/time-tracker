@@ -3,31 +3,36 @@ package controller
 import (
 	"database/sql"
 	"github.com/gin-gonic/gin"
-	"github.com/zzuun/time-tracker/model"
+	"github.com/zzuun/time-tracker/auth"
+	"github.com/zzuun/time-tracker/databases"
+	"github.com/zzuun/time-tracker/models"
 	"github.com/zzuun/time-tracker/utils"
 	"net/http"
 	"strconv"
 	"time"
 )
 
-type Controller struct{ DB *model.Database }
+type Controller struct{ db databases.Database }
+
+func NewController(db databases.Database) *Controller {
+	return &Controller{db: db}
+}
 
 // @Tags account
 // @Summary signup
-// @Param body	body model.UserInput	true	"username, password"
+// @Param body	body models.UserInput	true	"username, password"
 // @Accept  json
 // @Produce  json
 // @router /signup [post]
 // @Success 201 "user created successfully"
-func (c *Controller) Signup(ctx *gin.Context) {
-	user := new(model.User)
-	err := ctx.ShouldBind(&user)
-	if err != nil {
+func (ctrl *Controller) SignupPost(ctx *gin.Context) {
+	var user models.User
+	if err := ctx.ShouldBind(&user); err != nil {
 		ctx.JSON(http.StatusBadRequest, err)
 		return
 	}
 
-	if !utils.IsEmailValid(user.Email) {
+	if !auth.IsEmailValid(user.Email) {
 		ctx.JSON(http.StatusBadRequest, "invalid email")
 		return
 	}
@@ -37,21 +42,20 @@ func (c *Controller) Signup(ctx *gin.Context) {
 		return
 	}
 
-	_, err = c.DB.GetUser(user.Email)
+	_, err := ctrl.db.GetUser(user.Email)
 	if err == nil {
 		ctx.JSON(http.StatusBadRequest, "email already registered")
 		return
 	}
-	if err != nil && err != sql.ErrNoRows {
+	if err != sql.ErrNoRows {
 		ctx.JSON(http.StatusInternalServerError, err)
 		return
 	}
 
-	hashpassword, _ := utils.HashPassword(user.Password)
+	hashpassword, _ := auth.HashPassword(user.Password)
 	user.Password = hashpassword
 
-	_, err = c.DB.CreateUser(user)
-	if err != nil {
+	if _, err := ctrl.db.CreateUser(user); err != nil {
 		ctx.JSON(http.StatusInternalServerError, err)
 		return
 	}
@@ -61,32 +65,32 @@ func (c *Controller) Signup(ctx *gin.Context) {
 
 // @Tags account
 // @Summary login
-// @Param body	body model.UserInput	true	"username, password"
+// @Param body	body models.UserInput	true	"username, password"
 // @Accept  json
 // @Produce  json
 // @router /login [post]
-// @Success 200 "X-AUTH-TOKEN"
-func (c *Controller) Login(ctx *gin.Context) {
-	user := new(model.User)
-	err := ctx.ShouldBind(&user)
-	if err != nil {
+// @Success 200 "X-Auth-Token"
+func (ctrl *Controller) LoginPost(ctx *gin.Context) {
+
+	var user models.User
+	if err := ctx.ShouldBind(&user); err != nil {
 		ctx.JSON(http.StatusBadRequest, err)
 		return
 	}
 
 	password := user.Password
-	user, err = c.DB.GetUser(user.Email)
+	user, err := ctrl.db.GetUser(user.Email)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, "user not found")
 		return
 	}
 
-	if !utils.CheckPassword(password, user.Password) {
+	if !auth.CheckPassword(password, user.Password) {
 		ctx.JSON(http.StatusBadRequest, "incorrect password")
 		return
 	}
 
-	token, err := utils.GenerateToken(user.ID)
+	token, err := auth.GenerateToken(user.ID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, err)
 		return
@@ -97,60 +101,41 @@ func (c *Controller) Login(ctx *gin.Context) {
 
 // @Tags timer
 // @Summary Start timer
-// @param X-AUTH-TOKEN	header	string	true	"JWT Token"
+// @param X-Auth-Token	header	string	true	"JWT Token"
 // @Accept  json
 // @Produce  json
-// @router /start [post]
-// @Success 200 {object} model.Entry
-func (c *Controller) StartTime(ctx *gin.Context) {
+// @router /tracker/start [post]
+// @Success 200 {object} models.Entry
+func (ctrl *Controller) StartTimePost(ctx *gin.Context) {
 
-	token := ctx.GetHeader("X-AUTH-TOKEN")
-	if len(token) == 0 {
-		ctx.JSON(http.StatusBadRequest, "token is missing")
-		return
-	}
+	userIdString, _ := ctx.Get(utils.UserId)
+	userId := userIdString.(int)
 
-	id, err := utils.ValidateToken(token)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, err)
-		return
-	}
-
-	entry, err := c.DB.AddTimeEntry(id)
+	entry, err := ctrl.db.AddTimeEntry(userId)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, err)
 		return
 	}
-	entry.UserId = id
+	entry.UserId = userId
 	ctx.JSON(http.StatusOK, entry)
 }
 
 // @Tags timer
 // @Summary Stop timer
 // @Param id path	string 	true 	"id of the entry"
-// @param X-AUTH-TOKEN	header	string	true	"JWT Token"
+// @param X-Auth-Token	header	string	true	"JWT Token"
 // @Accept  json
 // @Produce  json
-// @router /stop/{id} [put]
+// @router /tracker/stop/{id} [put]
 // @Success 200 "record updated"
-func (c *Controller) StopTime(ctx *gin.Context) {
+func (ctrl *Controller) StopTimePut(ctx *gin.Context) {
 
-	token := ctx.GetHeader("X-AUTH-TOKEN")
-	if len(token) == 0 {
-		ctx.JSON(http.StatusBadRequest, "token is missing")
-		return
-	}
-
-	user_id, err := utils.ValidateToken(token)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, err)
-		return
-	}
+	userIdString, _ := ctx.Get(utils.UserId)
+	userId := userIdString.(int)
 
 	strid := ctx.Param("id")
 	id, _ := strconv.Atoi(strid)
-	err = c.DB.UpdateTimeEntry(id, user_id)
-	if err != nil {
+	if err := ctrl.db.UpdateTimeEntry(id, userId); err != nil {
 		ctx.JSON(http.StatusInternalServerError, err)
 		return
 	}
@@ -160,99 +145,74 @@ func (c *Controller) StopTime(ctx *gin.Context) {
 
 // @Tags timer
 // @Summary List of all entries
-// @param X-AUTH-TOKEN	header	string	true	"JWT Token"
+// @param X-Auth-Token	header	string	true	"JWT Token"
+// @param duration	query	string	true	"duration: custom,week,day,month,day,today "
 // @param from	query	string	false	"starting date : format 2021-01-01"
 // @param to	query	string	false	"ending date : format 2021-01-31"
 // @Accept  json
 // @Produce  json
-// @router /activity [get]
-// @Success 200 "{"today":"","24hours":"","weekly":"","monthly":""}"
-func (c *Controller) Activity(ctx *gin.Context) {
+// @router /tracker/activity [get]
+// @Success 200 "{"total_time":""}"
+func (ctrl *Controller) ActivityGet(ctx *gin.Context) {
 
-	token := ctx.GetHeader("X-AUTH-TOKEN")
-	if len(token) == 0 {
-		ctx.JSON(http.StatusBadRequest, "token is missing")
+	userIdString, _ := ctx.Get(utils.UserId)
+	userId := userIdString.(int)
+
+	var to, from time.Time
+	var err error
+
+	switch ctx.Query(utils.ActivityDuration) {
+	case utils.ActivityCustom:
+
+		toInput := ctx.Query(utils.ActivityParamTimeTo)
+		fromInput := ctx.Query(utils.ActivityParamTimeFrom)
+		if to, err = utils.StringtoTime(toInput); err != nil {
+			ctx.JSON(http.StatusBadRequest, err)
+			return
+		}
+		if from, err = utils.StringtoTime(fromInput); err != nil {
+			ctx.JSON(http.StatusBadRequest, err)
+			return
+		}
+
+	case utils.ActivityDay:
+
+		from = time.Now().AddDate(0, 0, -1)
+		to = time.Now()
+
+	case utils.ActivityMonthly:
+
+		to = time.Now()
+		from = time.Date(to.Year(), to.Month(), 1, 0, 0, 0, 0, time.Local)
+
+	case utils.ActivityWeekly:
+
+		to = time.Now()
+		offset := int(time.Monday - to.Weekday())
+		if offset > 0 {
+			offset = -6
+		}
+		from = time.Date(to.Year(), to.Month(), to.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, offset)
+
+	case utils.ActivityToday:
+
+		from = time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 0, 0, 0, 0, time.Now().Location())
+		to = time.Now()
+
+	default:
+		ctx.JSON(http.StatusBadRequest, "duration is not valid")
 		return
 	}
 
-	user_id, err := utils.ValidateToken(token)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, err)
-		return
-	}
 	var resp = make(map[string]string)
 
-	to_input := ctx.Query("to")
-	from_input := ctx.Query("from")
-
-	//custom
-	if len(to_input) != 0 && len(from_input) != 0 {
-		to, err := utils.StringtoTime(to_input)
-		if err != nil {
-			ctx.JSON(http.StatusBadRequest, err)
-			return
-		}
-		from, err := utils.StringtoTime(from_input)
-		if err != nil {
-			ctx.JSON(http.StatusBadRequest, err)
-			return
-		}
-
-		if from.After(to) {
-			from, to = to, from
-		}
-		to = to.AddDate(0, 0, 1)
-		s, err := c.DB.ListTimeEntries(from, to, user_id)
-		if err != nil {
-			ctx.JSON(http.StatusBadRequest, err)
-			return
-		}
-		resp["custom"] = s
-	}
-
-	// today
-	from := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 0, 0, 0, 0, time.Now().Location())
-	to := time.Now()
-	s, err := c.DB.ListTimeEntries(from, to, user_id)
+	totalTime, err := ctrl.db.ListTimeEntries(from, to, userId)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, err)
+		ctx.JSON(http.StatusInternalServerError, err)
 		return
 	}
-	resp["today"] = s
 
-	//last24hours
-	from = time.Now().AddDate(0, 0, -1)
-	to = time.Now()
-	s, err = c.DB.ListTimeEntries(from, to, user_id)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, err)
-		return
-	}
-	resp["24hours"] = s
-
-	//todo this week
-	to = time.Now()
-	offset := int(time.Monday - to.Weekday())
-	if offset > 0 {
-		offset = -6
-	}
-	from = time.Date(to.Year(), to.Month(), to.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, offset)
-	s, err = c.DB.ListTimeEntries(from, to, user_id)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, err)
-		return
-	}
-	resp["weekly"] = s
-
-	// his month
-	to = time.Now()
-	from = time.Date(to.Year(), to.Month(), 1, 0, 0, 0, 0, time.Local)
-	s, err = c.DB.ListTimeEntries(from, to, user_id)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, err)
-		return
-	}
-	resp["monthly"] = s
+	resp["total_time"] = totalTime
 
 	ctx.JSON(http.StatusOK, resp)
 
