@@ -161,7 +161,7 @@ var doc = `{
                 }
             }
         },
-        "/tracker/stop/{id}": {
+        "/tracker/stop/entry/{id}": {
             "put": {
                 "consumes": [
                     "application/json"
@@ -237,12 +237,12 @@ type swaggerInfo struct {
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = swaggerInfo{
-	Version:     "1.0",
+	Version:     "",
 	Host:        "",
 	BasePath:    "",
 	Schemes:     []string{},
-	Title:       "time-tracker",
-	Description: "A simple time-tracking application in golang.",
+	Title:       "",
+	Description: "",
 }
 
 type s struct{}

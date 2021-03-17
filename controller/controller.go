@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"github.com/gin-gonic/gin"
 	"github.com/zzuun/time-tracker/auth"
-	"github.com/zzuun/time-tracker/databases"
+	"github.com/zzuun/time-tracker/db"
 	"github.com/zzuun/time-tracker/models"
 	"github.com/zzuun/time-tracker/utils"
 	"net/http"
@@ -12,10 +12,22 @@ import (
 	"time"
 )
 
-type Controller struct{ db databases.Database }
+const (
+	entryIDParam          = "id"
+	activityParamTimeTo   = "to"
+	activityParamTimeFrom = "from"
+	activityCustom        = "custom"
+	activityToday         = "today"
+	activityWeekly        = "week"
+	activityMonthly       = "month"
+	activityDay           = "day"
+	activityDuration      = "duration"
+)
 
-func NewController(db databases.Database) *Controller {
-	return &Controller{db: db}
+type Controller struct{ ds db.DataStore }
+
+func NewController(ds db.DataStore) *Controller {
+	return &Controller{ds: ds}
 }
 
 // @Tags account
@@ -25,14 +37,14 @@ func NewController(db databases.Database) *Controller {
 // @Produce  json
 // @router /signup [post]
 // @Success 201 "user created successfully"
-func (ctrl *Controller) SignupPost(ctx *gin.Context) {
+func (ctrl *Controller) SignupPOST(ctx *gin.Context) {
 	var user models.User
 	if err := ctx.ShouldBind(&user); err != nil {
 		ctx.JSON(http.StatusBadRequest, err)
 		return
 	}
 
-	if !auth.IsEmailValid(user.Email) {
+	if !utils.IsEmailValid(user.Email) {
 		ctx.JSON(http.StatusBadRequest, "invalid email")
 		return
 	}
@@ -42,7 +54,7 @@ func (ctrl *Controller) SignupPost(ctx *gin.Context) {
 		return
 	}
 
-	_, err := ctrl.db.GetUser(user.Email)
+	_, err := ctrl.ds.GetUser(user.Email)
 	if err == nil {
 		ctx.JSON(http.StatusBadRequest, "email already registered")
 		return
@@ -52,10 +64,10 @@ func (ctrl *Controller) SignupPost(ctx *gin.Context) {
 		return
 	}
 
-	hashpassword, _ := auth.HashPassword(user.Password)
-	user.Password = hashpassword
+	hashPassword, _ := auth.HashPassword(user.Password)
+	user.Password = hashPassword
 
-	if _, err := ctrl.db.CreateUser(user); err != nil {
+	if _, err := ctrl.ds.CreateUser(user); err != nil {
 		ctx.JSON(http.StatusInternalServerError, err)
 		return
 	}
@@ -70,7 +82,7 @@ func (ctrl *Controller) SignupPost(ctx *gin.Context) {
 // @Produce  json
 // @router /login [post]
 // @Success 200 "X-Auth-Token"
-func (ctrl *Controller) LoginPost(ctx *gin.Context) {
+func (ctrl *Controller) LoginPOST(ctx *gin.Context) {
 
 	var user models.User
 	if err := ctx.ShouldBind(&user); err != nil {
@@ -79,7 +91,7 @@ func (ctrl *Controller) LoginPost(ctx *gin.Context) {
 	}
 
 	password := user.Password
-	user, err := ctrl.db.GetUser(user.Email)
+	user, err := ctrl.ds.GetUser(user.Email)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, "user not found")
 		return
@@ -106,12 +118,15 @@ func (ctrl *Controller) LoginPost(ctx *gin.Context) {
 // @Produce  json
 // @router /tracker/start [post]
 // @Success 200 {object} models.Entry
-func (ctrl *Controller) StartTimePost(ctx *gin.Context) {
+func (ctrl *Controller) StartTimePOST(ctx *gin.Context) {
 
-	userIdString, _ := ctx.Get(utils.UserId)
-	userId := userIdString.(int)
+	userId, err := utils.ExtractUserId(ctx.Get(utils.UserID))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err)
+		return
+	}
 
-	entry, err := ctrl.db.AddTimeEntry(userId)
+	entry, err := ctrl.ds.AddTimeEntry(userId)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, err)
 		return
@@ -126,16 +141,23 @@ func (ctrl *Controller) StartTimePost(ctx *gin.Context) {
 // @param X-Auth-Token	header	string	true	"JWT Token"
 // @Accept  json
 // @Produce  json
-// @router /tracker/stop/{id} [put]
+// @router /tracker/stop/entry/{id} [put]
 // @Success 200 "record updated"
-func (ctrl *Controller) StopTimePut(ctx *gin.Context) {
+func (ctrl *Controller) StopTimePUT(ctx *gin.Context) {
 
-	userIdString, _ := ctx.Get(utils.UserId)
-	userId := userIdString.(int)
+	userId, err := utils.ExtractUserId(ctx.Get(utils.UserID))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err)
+		return
+	}
 
-	strid := ctx.Param("id")
-	id, _ := strconv.Atoi(strid)
-	if err := ctrl.db.UpdateTimeEntry(id, userId); err != nil {
+	strid := ctx.Param(entryIDParam)
+	id, err := strconv.Atoi(strid)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, err)
+		return
+	}
+	if err := ctrl.ds.UpdateTimeEntry(id, userId); err != nil {
 		ctx.JSON(http.StatusInternalServerError, err)
 		return
 	}
@@ -153,19 +175,20 @@ func (ctrl *Controller) StopTimePut(ctx *gin.Context) {
 // @Produce  json
 // @router /tracker/activity [get]
 // @Success 200 "{"total_time":""}"
-func (ctrl *Controller) ActivityGet(ctx *gin.Context) {
+func (ctrl *Controller) ActivityGET(ctx *gin.Context) {
 
-	userIdString, _ := ctx.Get(utils.UserId)
-	userId := userIdString.(int)
-
+	userId, err := utils.ExtractUserId(ctx.Get(utils.UserID))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err)
+		return
+	}
 	var to, from time.Time
-	var err error
 
-	switch ctx.Query(utils.ActivityDuration) {
-	case utils.ActivityCustom:
+	switch ctx.Query(activityDuration) {
+	case activityCustom:
 
-		toInput := ctx.Query(utils.ActivityParamTimeTo)
-		fromInput := ctx.Query(utils.ActivityParamTimeFrom)
+		toInput := ctx.Query(activityParamTimeTo)
+		fromInput := ctx.Query(activityParamTimeFrom)
 		if to, err = utils.StringtoTime(toInput); err != nil {
 			ctx.JSON(http.StatusBadRequest, err)
 			return
@@ -175,17 +198,17 @@ func (ctrl *Controller) ActivityGet(ctx *gin.Context) {
 			return
 		}
 
-	case utils.ActivityDay:
+	case activityDay:
 
 		from = time.Now().AddDate(0, 0, -1)
 		to = time.Now()
 
-	case utils.ActivityMonthly:
+	case activityMonthly:
 
 		to = time.Now()
 		from = time.Date(to.Year(), to.Month(), 1, 0, 0, 0, 0, time.Local)
 
-	case utils.ActivityWeekly:
+	case activityWeekly:
 
 		to = time.Now()
 		offset := int(time.Monday - to.Weekday())
@@ -194,7 +217,7 @@ func (ctrl *Controller) ActivityGet(ctx *gin.Context) {
 		}
 		from = time.Date(to.Year(), to.Month(), to.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, offset)
 
-	case utils.ActivityToday:
+	case activityToday:
 
 		from = time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 0, 0, 0, 0, time.Now().Location())
 		to = time.Now()
@@ -206,7 +229,7 @@ func (ctrl *Controller) ActivityGet(ctx *gin.Context) {
 
 	var resp = make(map[string]string)
 
-	totalTime, err := ctrl.db.ListTimeEntries(from, to, userId)
+	totalTime, err := ctrl.ds.ListTimeEntries(from, to, userId)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, err)
 		return

@@ -17,9 +17,6 @@ definitions:
     type: object
 info:
   contact: {}
-  description: A simple time-tracking application in golang.
-  title: time-tracker
-  version: "1.0"
 paths:
   /login:
     post:
@@ -110,7 +107,7 @@ paths:
       summary: Start timer
       tags:
       - timer
-  /tracker/stop/{id}:
+  /tracker/stop/entry/{id}:
     put:
       consumes:
       - application/json

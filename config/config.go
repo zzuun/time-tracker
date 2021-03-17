@@ -2,27 +2,29 @@ package config
 
 import (
 	"github.com/joho/godotenv"
+	"log"
 	"os"
 )
 
 type Configuration struct {
-	HOST     string
-	DBUSER   string
-	PASSWORD string
-	DBNAME   string
-	PORT     string
+	Host     string
+	DbUser   string
+	Password string
+	DbName   string
+	Port     string
 }
 
-var Env Configuration
+var Conf Configuration
 
 func init() {
+
 	if err := godotenv.Load(".env"); err != nil {
-		return
+		log.Println(err)
 	}
 
-	Env.DBUSER = os.Getenv("DBUSER")
-	Env.HOST = os.Getenv("HOST")
-	Env.PASSWORD = os.Getenv("PASSWORD")
-	Env.DBNAME = os.Getenv("DBNAME")
-	Env.PORT = os.Getenv("PORT")
+	Conf.DbUser = os.Getenv("DB_USER")
+	Conf.Host = os.Getenv("HOST")
+	Conf.Password = os.Getenv("PASSWORD")
+	Conf.DbName = os.Getenv("DB_NAME")
+	Conf.Port = os.Getenv("PORT")
 }

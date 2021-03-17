@@ -1,4 +1,4 @@
-package databases
+package db
 
 import (
 	"database/sql"
@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-type Database interface {
+type DataStore interface {
 	Close()
 	CreateUser(models.User) (int, error)
 	GetUser(string) (models.User, error)
@@ -18,12 +18,12 @@ type Database interface {
 	ListTimeEntries(time.Time, time.Time, int) (string, error)
 }
 
-func ConnectDatabase() (database Database, err error) {
-	info := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", config.Env.HOST, config.Env.PORT, config.Env.DBUSER, config.Env.PASSWORD, config.Env.DBNAME)
+func NewDataStore() (datastore DataStore, err error) {
+	info := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", config.Conf.Host, config.Conf.Port, config.Conf.DbUser, config.Conf.Password, config.Conf.DbName)
 	client, err := sql.Open("postgres", info)
 	if err != nil {
 		return nil, err
 	}
-	database = &Postgres{client: client}
-	return database, nil
+	datastore = &Database{client: client}
+	return datastore, nil
 }
